@@ -2,6 +2,8 @@
 
 This is a modified version of the [Qupath_to_LMD](https://github.com/CosciaLab/Qupath_to_LMD) tool, tailored specifically for workflows that utilise tube collectors instead of standard well plates. It was created in the IGC AIR.
 
+This streamlist link for this modified version is [here](https://igc-qupath-to-lmd.streamlit.app/)
+
 ## What This Does
 This application takes `.geojson` polygon annotations generated in QuPath and converts them into the `.xml` format required by the Leica LMD7 microscope software for automated laser microdissection. 
 
