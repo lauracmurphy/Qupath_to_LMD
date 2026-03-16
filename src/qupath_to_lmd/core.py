@@ -1,6 +1,7 @@
 import ast
 import os
 import tempfile
+import string
 
 import geopandas
 import numpy
@@ -119,90 +120,44 @@ def perform_triangle_qc(df: geopandas.GeoDataFrame, calib_points_dict: dict, sel
    return calib_np_array
 
 def load_and_QC_SamplesandWells(samples_and_wells: dict):
-   """Loads and checks for common errors.
-
-   Checks for:
-   If it is empty
-   gdf samples are in saw
-   Provided wells inside normal 384 well plate
-   """
-   #TODO typos of missing " end up in index error
+   """Loads and checks for common errors."""
    logger.info("Checking samples and wells")
    if st.session_state.gdf is None:
-      logger.error("GeoDataFrame not found in session state. Please upload and process a GeoJSON file first.")
-      st.error("GeoDataFrame not found in session state. Please upload and process a GeoJSON file first.")
+      st.error("GeoDataFrame not found. Please upload a GeoJSON file first.")
       st.stop()
    if st.session_state.calibs is None:
-      logger.error("Calibration points were not accesible directly")
       st.error("Calibration points were not accesible directly")
       st.stop()
 
    gdf_samples = st.session_state['gdf'].classification_name.unique().tolist()
-   allowed_wells = utils.create_list_of_acceptable_wells(plate="384", margins=0)
+   
+   # Check if we are using Tubes based on session state
+   plate_type = "384"
+   if 'plate_gen_params' in st.session_state and st.session_state.plate_gen_params:
+      plate_type = st.session_state.plate_gen_params.get('plate_type', "384")
+      
+   if plate_type == "Tubes":
+      # Allow any standard uppercase letter for caps
+      allowed_targets = list(string.ascii_uppercase)
+   else:
+      allowed_targets = utils.create_list_of_acceptable_wells(plate="384", margins=0)
 
    samples = samples_and_wells.keys()
    wells = samples_and_wells.values()
 
-   # Is it empty?
-   if not isinstance(samples_and_wells,dict):
-      raise ValueError("samples and wells is not a dict")
-   if not samples_and_wells: #if empty
-      raise ValueError("dictionary is empty, most likely typo, please double check")
+   if not isinstance(samples_and_wells,dict) or not samples_and_wells:
+      raise ValueError("Dictionary is empty or invalid.")
 
-   # gdf samples in saw
    missing = set(gdf_samples) - samples
    if missing:
-      logger.error(f"Classes in geodataframe, but not in samples and wells: {missing}")
       st.error(f"Classes in geodataframe, but not in samples and wells: {missing}")
-      # st.stop()
 
-   # wells inside allowable wells
-   crazy_wells = set(wells) - set(allowed_wells)
+   crazy_wells = set(wells) - set(allowed_targets)
    if crazy_wells:
-      logger.error(f"Wells not existing in 384wp: {crazy_wells}")
-      st.error(f"Wells not existing in 384wp: {crazy_wells}")
+      st.error(f"Targets not allowed in current layout: {crazy_wells}")
       st.stop()
 
-   logger.success('The samples and wells scheme QC is done!')
    st.success('The samples and wells scheme QC is done!')
-
-def make_classes_unique(classes_to_modify: list):
-   """Modifies the GeoDataFrame in session state to make specified class names unique.
-
-   For each row of a specified class, a unique suffix is added to its 'classification_name'.
-   """
-   logger.info("Splitting specified classes into replicates")
-   if 'gdf' not in st.session_state or st.session_state.gdf is None:
-      logger.error("GeoDataFrame not found. Please load a GeoJSON file first.")
-      st.error("GeoDataFrame not found. Please load a GeoJSON file first.")
-      st.stop()
-
-   gdf = st.session_state.gdf.copy()
-
-   # Keep track of original names for the download
-   if 'original_classification_name' not in gdf.columns:
-      gdf['original_classification_name'] = gdf['classification_name']
-
-   for class_name in classes_to_modify:
-      # Find all rows that match the original class_name
-      # Important to match on the original name in case of multiple runs
-      matching_indices = gdf[gdf['original_classification_name'] == class_name].index
-
-      if not matching_indices.empty:
-         # Generate new unique names for these rows
-         for i, idx in enumerate(matching_indices):
-               new_name = f"{class_name}_{str(i+1).zfill(3)}"
-               gdf.loc[idx, 'classification_name'] = new_name
-
-   #replace old classification name inside classification dict
-   gdf = utils.update_classification_column(gdf=gdf)
-
-   # Update the session state
-   st.session_state.gdf = gdf
-
-   logger.success("GeoDataFrame updated with unique class names.")
-   st.success("GeoDataFrame updated with unique class names.")
-
 
 def create_collection():
    """Creates XML from geojson and returns file contents."""

@@ -151,26 +151,35 @@ st.divider()
 ########################################
 
 st.markdown("""
-            ## Step 2: Decide which plate to collect into, either 384 or 96 well plate.  
-            Decide how many wells to make unavailable as a margin (for 384wp we suggest a margin of 2).  
-            Decide how many wells to leave blank in between, for easier pipetting.  
+            ## Step 2: Decide your target collection method.  
             """)
 
-st.write("You can increase plate size by dragging bottom right corner")
+collection_mode = st.radio("Collection Target", ["Plate", "Tubes"], horizontal=True)
 
-plate, margin, step_row, step_col = st.columns(4)
-with plate:
-   plate_string = st.selectbox('Select a plate type',('384 well plate', '96 well plate'))
-with margin:
-   margin_int = st.number_input('Margin (integer)', min_value=0, max_value=10, value=1)
-with step_row:
-   step_row_int = st.number_input('Space between rows', min_value=1, max_value=10, value=1)
-with step_col:
-   step_col_int = st.number_input('Space between columns', min_value=1, max_value=10, value=1)
+if collection_mode == "Plate":
+   st.markdown("Decide which plate to collect into, margins, and spacing.")
+   plate, margin, step_row, step_col = st.columns(4)
+   with plate:
+      plate_string = st.selectbox('Select a plate type',('384 well plate', '96 well plate'))
+   with margin:
+      margin_int = st.number_input('Margin (integer)', min_value=0, max_value=10, value=1)
+   with step_row:
+      step_row_int = st.number_input('Space between rows', min_value=1, max_value=10, value=1)
+   with step_col:
+      step_col_int = st.number_input('Space between columns', min_value=1, max_value=10, value=1)
 
-plate_type = plate_string.split(' ')[0]
-acceptable_wells_list = utils.create_list_of_acceptable_wells(
-   plate=plate_type, margins=margin_int, step_row=step_row_int, step_col=step_col_int)
+   plate_type = plate_string.split(' ')[0]
+   acceptable_wells_list = utils.create_list_of_acceptable_wells(
+      plate=plate_type, margins=margin_int, step_row=step_row_int, step_col=step_col_int)
+
+elif collection_mode == "Tubes":
+   st.markdown("Specify the number of tube caps available (e.g., 4 or 5 for standard 0.5ml tube collectors).")
+   plate_string = "Tubes"
+   plate_type = "Tubes"
+   margin_int, step_row_int, step_col_int = 0, 1, 1 
+   num_tubes = st.number_input('Number of tube caps', min_value=1, max_value=26, value=5)
+   acceptable_wells_list = utils.create_list_of_acceptable_wells(plate="Tubes", tube_count=num_tubes)
+
 acceptable_wells_set = set(acceptable_wells_list)
 
 #####################################
@@ -295,10 +304,16 @@ if st.button("Process files"):
       st.session_state.xml_content = xml_content
       st.session_state.csv_content = csv_content
 
+      # Determine what to name the CSV dynamically
+      target_name = "384_wellplate"
+      if 'plate_gen_params' in st.session_state and st.session_state.plate_gen_params:
+         target_name = st.session_state.plate_gen_params.get('plate_type', '384').replace(" ", "_")
+
       zip_buffer = io.BytesIO()
       with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
          zip_file.writestr(f'{Path(st.session_state.file_name).stem}.xml', xml_content)
-         zip_file.writestr(f'{Path(st.session_state.file_name).stem}_384_wellplate.csv', csv_content)
+         # This line now uses the dynamic target_name instead of being hardcoded
+         zip_file.writestr(f'{Path(st.session_state.file_name).stem}_{target_name}.csv', csv_content)
          zip_file.writestr('samples_and_wells.json', json.dumps(st.session_state.saw, indent=4))
          with tempfile.NamedTemporaryFile(suffix=".geojson") as tmp_geojson:
             tmp_gdf = utils.sanitize_gdf(st.session_state.gdf)
@@ -316,7 +331,6 @@ if st.button("Process files"):
    else:
       st.warning("Please ensure you have loaded a GeoJSON and provided a samples-and-wells scheme.")
       logger.warning("GeoJSON or samples-and-wells scheme not found")
-
 if st.session_state.zip_buffer:
    st.download_button(
       label="Download files",
