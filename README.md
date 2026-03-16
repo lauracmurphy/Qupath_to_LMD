@@ -1,108 +1,21 @@
-[![Open the QuPath-to-LMD WebApp](https://img.shields.io/badge/Launch%20App-Streamlit-brightgreen?logo=streamlit)](https://qupath-to-lmd-mdcberlin.streamlit.app/)
+# QuPath to Leica LMD Converter (Tube Cap Edition)
 
-# Introduction
+This is a modified version of the [Qupath_to_LMD](https://github.com/CosciaLab/Qupath_to_LMD) tool, tailored specifically for workflows that utilise tube collectors instead of standard well plates. It was created in the IGC AIR.
 
-QuPath-to-LMD is the easiest way to go from QuPath annotations to LMD collection!
-With more than 60 unique users, we try to help everyone collect their tissues.
+## What This Does
+This application takes `.geojson` polygon annotations generated in QuPath and converts them into the `.xml` format required by the Leica LMD7 microscope software for automated laser microdissection. 
 
-## Qupath Annotations
+**Custom Feature:** The original version of this app strictly maps samples to 96-well or 384-well plate grids. This modified fork adds native support for **Tube Cap Collectors** (e.g., 0.5ml, 1.5ml, and 8-strip tubes). It maps samples directly to Caps A, B, C, D, and E to match the Leica LMD software's expected tube targets.
 
-0. Create a Qupath Project (optional)
-1. Load images of interest
-2. Draw annotations
-3. Classify annotations using QuPath classes
-4. Add at least 3 calibration points using point tool
-5. Export annotations as a **FeatureCollection** in the **.geojson** format
-6. Load into webapp
+## How to Use
+1. **Upload:** Drop your `.geojson` file (exported from QuPath) into Step 1. Ensure it contains at least 3 calibration points.
+2. **Select Target:** In Step 2, select **Tubes** as your collection method and specify the number of caps available.
+3. **Map & Process:** Assign your QuPath sample classes to the corresponding caps, and click **Process files** in Step 3.
+4. **Download:** You will receive a `.zip` file containing the `.xml` file for the microscope, a tracking `.csv`, and a Quality Control image.
 
-## Streamlit webapp
+## Attribution and License
+This project is a modified fork of the original [Qupath_to_LMD](https://github.com/CosciaLab/Qupath_to_LMD) repository, originally developed by the **CosciaLab** as part of the openDVP framework. 
 
-Go to [Streamlit Webapp Link](https://qupath-to-lmd-mdcberlin.streamlit.app/)
+All credit for the core conversion engine (via `py-lmd`), the spatial data processing, and the foundation of the Streamlit UI goes to the original authors. 
 
-<a href="https://qupath-to-lmd-mdcberlin.streamlit.app/">
-  <img src="assets/webapp_screenshot.png" alt="Open WebApp" width="600"/>
-</a>
-
-1. Upload your geojson file, and choose your calibration points
-2. Choose your plate setup
-3. Process the files and download your output files
-
-# Youtube Tutorials
-
-## Introduction to Qupath-to-LMD Version4
-
-[![Watch the video](https://img.youtube.com/vi/K8xOIg6gNCY/0.jpg)](https://youtu.be/K8xOIg6gNCY?si=g6YqzpwnHYZa69qo)
-
-## Qupath-to-LMD v3 tutorial
-
-[![Watch the video](https://img.youtube.com/vi/jimBIqGUaXg/0.jpg)](https://www.youtube.com/watch?v=jimBIqGUaXg&t=2s)
-
-
-## What is the "samples_and_wells" scheme
-
-It is the text, written in the format of a python dictionary, that allows the code to understand to which well will the countours be cut into. 
-
-This is an example:
-```
-{   
-"Class_name_1" : "C3",  
-"Class_name_2" : "C5",  
-"Class_name_3" : "C7",  
-}  
-```
-Each "Class_name_" is the exact name of the class of annotation found in Qupath.
-The "C3", "C5", "C7" strings determine into which well are the contours going to be collected.
-Works for both 384-well plates and 96-well plates
-
-# Citation
-
-Please cite the following work when using this package:
-
-Please cite the [BioArxiv](https://www.biorxiv.org/content/10.1101/2025.07.13.662099v1):
-
-Nimo, J., Fritzsche, S., Valdes, D. S., Trinh, M., Pentimalli, T., Schallenberg, S., Klauschen, F., Herse, F., Florian, S., Rajewsky, N., & Coscia, F. (2025). OpenDVP: An experimental and computational framework for community-empowered deep visual proteomics [Preprint]. bioRxiv. https://doi.org/10.1101/2025.07.13.662099
-
-# FAQ
-
-
-(1) I have a KeyError type of error, what do I do? 
-
-KeyError is usually because your samples_and_wells does not match your geojson file.
-Check them, they have to be exactly the same.
-
-(2) Not sure if your .geojson file is the correct format? 
-
-Check the example_input folder in the repository to see how they should look like. 
-
-(3) I have an error what do I do? 
-
-Create a gihtub issue explaning what are you doing and pasting the Traceback (the code that is trying to tell you what went wrong)
-
-(4) I have different number of replicates per category of samples?
-
-Either you create a set of classes that includes unnecessary classes and remove the ones you don't need from the samples and wells, or you create a set of classes that includes most samples, and then add the samples that have more replicates.
-
-(5) Can I somehow set a threshold of how much area to annotate per class?
-
-Not algorithmically. Options are: You manually sum the area per class as you annotate, QuPath has measurements per annotation that you can filter by class. OR, you can limit the collection at the LMD7 software (>8).
-
-(6) What if I want to collect various slides of tissue into the same 384wp
-
-I suggest you create a set of QuPath classes that include all slides, make sure they are unique (Slide1_celltypeA_control_1). Then annotate as normal and export a .geojson file per slide. 
-Then you should create a samples and wells scheme that includes all classes from all slides. Process each .geojson file with the same samples and wells scheme, and collect one slide at a time. 
-
-(7) How should I position my calibration points?
-
-The closer the three calibration points are to the annotations the less distortion you are going to suffer.
-Your tolerance for distortion depends on the size of your annotations (single cells will suffer greatly, mini-bulk less so).
-
-For example:
-
-<img width="300" alt="bad_calibpoints" src="https://github.com/user-attachments/assets/887f7afc-fedb-438b-b00c-bbbd2a524f6f" />
-
-In this image the small contours at the top will likely suffer distortion leading the collection to be of different tissue than the one annotated for.
-
-The solution is to separate into two different sets of contours with closer calibration points:
-![better_calib_points_1](https://github.com/user-attachments/assets/4eb068b8-afbb-4cd7-9ed8-790dd7622950)
-![better_calib_points_2](https://github.com/user-attachments/assets/6111132c-72dd-48fb-ae9f-0b04a01ede86)
-
+In accordance with the original licensing, this modified version remains open-source and is distributed under the **GNU General Public License v3.0 (GPL-3.0)**. Please see the `LICENSE` file for full terms and conditions.
