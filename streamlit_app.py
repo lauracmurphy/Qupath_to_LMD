@@ -60,11 +60,10 @@ logger.add(sys.stdout, colorize=True, format="<green>{time:HH:mm:ss.SS}</green> 
 ### Introduction ###
 ####################
 st.markdown("""
-            # Convert a GeoJSON polygons for Laser Microdissection
-            ## Part of the [openDVP](https://github.com/CosciaLab/openDVP) framework
-            ### For help, post issue on [Github](https://github.com/CosciaLab/Qupath_to_LMD) with .geojson file and session id
+            # QuPath to Leica LMD Converter
+            ## Custom Tube-Collection Version created for IGC AIR
+            ### For help or bug reports, please contact [Laura @ laura.murphy@ed.ac.uk] 
             """)
-st.write(f" Session id: {st.session_state.session_id}")
 st.divider()
 
 ############################
