@@ -24,9 +24,15 @@ def create_list_of_acceptable_wells(
       plate:str="384", 
       margins:int=0,
       step_row:int=1,
-      step_col:int=1):
-   """Creates wells according to user parameters."""
-   logger.info("Creating list of acceptable wells")
+      step_col:int=1,
+      tube_count:int=5): # Added tube count parameter
+   """Creates wells or tubes according to user parameters."""
+   logger.info(f"Creating list of acceptable targets for: {plate}")
+   
+   if plate == "Tubes":
+      # Generates A, B, C, D, E etc. based on how many caps you have
+      return list(string.ascii_uppercase[:tube_count])
+
    if plate not in ["384","96"]:
       raise ValueError("Plate must be either 384 or 96")
    if not isinstance(margins,int):
@@ -34,13 +40,8 @@ def create_list_of_acceptable_wells(
 
    min_row = 1
    min_col = 1
-
-   if plate == "384":
-      max_row = 16
-      max_col = 24
-   else:
-      max_row = 8
-      max_col = 12
+   max_row = 16 if plate == "384" else 8
+   max_col = 24 if plate == "384" else 12
 
    if margins>0 :
       max_col += -(margins)
@@ -56,19 +57,20 @@ def create_list_of_acceptable_wells(
    return list_of_acceptable_wells
 
 def sample_placement():
-   """Sample placement into plate csv."""
-   logger.info("Sample placement for 384wp")
+   """Sample placement into plate or tube csv."""
+   logger.info("Sample placement for CSV export")
 
-   plate_type = "384"  # Default to 384-well plate
+   plate_type = "384"  
    if 'plate_gen_params' in st.session_state and isinstance(st.session_state.plate_gen_params, dict):
       plate_type = st.session_state.plate_gen_params.get('plate_type', "384")
 
-   if plate_type == "384":
-      max_row = 16
-      max_col = 24
-   else:
-      max_row = 8
-      max_col = 12
+   if plate_type == "Tubes":
+      # Simple 2-column CSV for tubes
+      df = pandas.DataFrame(list(st.session_state.saw.items()), columns=["Sample", "Target"])
+      return df
+
+   max_row = 16 if plate_type == "384" else 8
+   max_col = 24 if plate_type == "384" else 12
 
    rows= [i for i in string.ascii_uppercase[:max_row]]
    columns = [str(i) for i in range(1,max_col+1)]
@@ -78,7 +80,6 @@ def sample_placement():
       location = st.session_state.saw[i]
       df.at[location[0],location[1:]] = i
 
-   logger.success("Sample placement done")
    return df
 
 def create_dataframe_samples_wells(
@@ -87,44 +88,46 @@ def create_dataframe_samples_wells(
       plate_string:str = "384",
       ):
    """Creates a dataframe to be displayed."""
-   if plate_string == "384":
-      rows, cols = 16, 24
-   elif plate_string == "96":
-      rows, cols = 8, 12
+   
+   if plate_string == "Tubes":
+      tube_names = acceptable_wells_list if acceptable_wells_list else list(string.ascii_uppercase[:5])
+      if st.session_state.view_mode == "default":
+         df = pd.DataFrame(tube_names, index=tube_names, columns=["Target Cap"])
+      elif st.session_state.view_mode == "samples":
+         list_of_classes = list(set(st.session_state.gdf['classification_name'].values)) if st.session_state.gdf is not None else []
+         df = pd.DataFrame(np.nan, index=tube_names, columns=["Sample"], dtype=object)
+         if randomize:
+            tube_names = sample(tube_names, len(tube_names))
+         for s, tube in zip(list_of_classes, tube_names):
+            df.at[tube, "Sample"] = s
+      return df
+
+   # Original Plate Logic below
+   rows, cols = (16, 24) if plate_string == "384" else (8, 12)
 
    if st.session_state.view_mode == "default":
       row_labels = list(string.ascii_uppercase[:rows])
       col_labels = list(range(1, cols + 1))
-
-      plate_data = []
-      for r in row_labels:
-         row_data = [f"{r}{c}" for c in col_labels]
-         plate_data.append(row_data)
+      plate_data = [[f"{r}{c}" for c in col_labels] for r in row_labels]
       df = pd.DataFrame(plate_data, index=row_labels, columns=col_labels)
 
    elif st.session_state.view_mode == "samples": 
       if st.session_state.gdf is None:
-         st.error("GeoDataFrame not found in session state. Please upload and process a GeoJSON file first.")
+         st.error("GeoDataFrame not found. Please upload a GeoJSON file first.")
          st.stop()
 
-      list_of_classes = set(st.session_state.gdf['classification_name'].values)
+      list_of_classes = list(set(st.session_state.gdf['classification_name'].values))
       df = pd.DataFrame(np.nan, index=list(string.ascii_uppercase[:rows]), columns=range(1, cols + 1), dtype=object)
 
       if len(list_of_classes) > len(acceptable_wells_list):
-         logger.warning("More classes than allowed wells")
          st.warning("More classes than allowed wells")
-         # list_of_classes = list_of_classes[:len(acceptable_wells_list)]
 
       if randomize:
-         logger.info("Randomizing sample locations")
          acceptable_wells_list = sample(acceptable_wells_list, len(acceptable_wells_list))
 
-      for s, well in zip(list_of_classes, acceptable_wells_list, strict=False):
-         row = well[0]
-         col = int(well[1:])
-         df.at[row, col] = s
+      for s, well in zip(list_of_classes, acceptable_wells_list):
+         df.at[well[0], int(well[1:])] = s
 
-   logger.success("Created dataframe for viewing samples and wells")
    return df
 
 def provide_highlighting_for_df(acceptable_wells_set:set = None):
@@ -191,14 +194,17 @@ def extract_coordinates(geometry):
          st.stop()
 
 def dataframe_to_saw_dict(df: pd.DataFrame) -> dict:
-    """Converts the plate layout DataFrame to a samples-and-wells dictionary."""
-    logger.info("Converting desired dataframe to samples and wells dictionary")
+    """Converts the layout DataFrame to a samples-and-wells dictionary."""
     saw_dict = {}
-    for well_row, series in df.iterrows():
-        for well_col, sample_name in series.items():
+    for row_idx, series in df.iterrows():
+        for col_idx, sample_name in series.items():
             if sample_name and pd.notna(sample_name):
-                well_coordinate = f"{well_row}{well_col}"
-                saw_dict[sample_name] = well_coordinate
+                # If it is a Tube, the index itself (A, B, C) is the target
+                plate_type = st.session_state.get('plate_gen_params', {}).get('plate_type', "384")
+                if plate_type == "Tubes":
+                    saw_dict[sample_name] = str(row_idx)
+                else:
+                    saw_dict[sample_name] = f"{row_idx}{col_idx}"
     return saw_dict
 
 def update_classification_column(gdf:geopandas.GeoDataFrame) -> geopandas.GeoDataFrame:
