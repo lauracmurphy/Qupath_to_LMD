@@ -90,7 +90,7 @@ def create_dataframe_samples_wells(
    """Creates a dataframe to be displayed."""
    
    if plate_string == "Tubes":
-      tube_names = acceptable_wells_list if acceptable_wells_list else list(string.ascii_uppercase[:5])
+      tube_names = acceptable_wells_list if acceptable_wells_list else list(string.ascii_uppercase[:4])
       if st.session_state.view_mode == "default":
          df = pd.DataFrame(tube_names, index=tube_names, columns=["Target Cap"])
       elif st.session_state.view_mode == "samples":

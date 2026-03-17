@@ -5,13 +5,13 @@ This is a modified version of the [Qupath_to_LMD](https://github.com/CosciaLab/Q
 This streamlist link for this modified version is [here](https://igc-qupath-to-lmd.streamlit.app/)
 
 ## What This Does
-This application takes `.geojson` polygon annotations generated in QuPath and converts them into the `.xml` format required by the Leica LMD7 microscope software for automated laser microdissection. 
+This application takes `.geojson` polygon annotations generated in QuPath and converts them into the `.xml` format required by the Leica LMD microscope software for automated laser microdissection. 
 
-**Custom Feature:** The original version of this app strictly maps samples to 96-well or 384-well plate grids. This modified fork adds native support for **Tube Cap Collectors** (e.g., 0.5ml, 1.5ml, and 8-strip tubes). It maps samples directly to Caps A, B, C, D, and E to match the Leica LMD software's expected tube targets.
+**Custom Feature:** The original version of this app strictly maps samples to 96-well or 384-well plate grids. This modified fork adds native support for tubes (labelled A,B,C,D).
 
 ## How to Use
 1. **Upload:** Drop your `.geojson` file (exported from QuPath) into Step 1. Ensure it contains at least 3 calibration points.
-2. **Select Target:** In Step 2, select **Tubes** as your collection method and specify the number of caps available.
+2. **Select Target:** In Step 2, select **Tubes** as your collection method and specify the number.
 3. **Map & Process:** Assign your QuPath sample classes to the corresponding caps, and click **Process files** in Step 3.
 4. **Download:** You will receive a `.zip` file containing the `.xml` file for the microscope, a tracking `.csv`, and a Quality Control image.
 

@@ -172,11 +172,11 @@ if collection_mode == "Plate":
       plate=plate_type, margins=margin_int, step_row=step_row_int, step_col=step_col_int)
 
 elif collection_mode == "Tubes":
-   st.markdown("Specify the number of tube caps available (e.g., 4 or 5 for standard 0.5ml tube collectors).")
+   st.markdown("Specify the number of tube caps available")
    plate_string = "Tubes"
    plate_type = "Tubes"
    margin_int, step_row_int, step_col_int = 0, 1, 1 
-   num_tubes = st.number_input('Number of tube caps', min_value=1, max_value=26, value=5)
+   num_tubes = st.number_input('Number of tube caps', min_value=1, max_value=4, value=4)
    acceptable_wells_list = utils.create_list_of_acceptable_wells(plate="Tubes", tube_count=num_tubes)
 
 acceptable_wells_set = set(acceptable_wells_list)
